@@ -46,5 +46,20 @@ function NewPublishers(callback) {
       }
     });
   }
+
+  function stagingUpdateStatus(callback) {
+    const query = "SELECT * FROM v_sys_staging_update_dead";
   
-  module.exports = { NewPublishers, contractsChange };
+    connection.query(query, (error, results) => {
+      if (error) {
+        console.error('Failed to execute query: ', error);
+        return;
+      }
+  
+      if (results.length > 0) {
+        callback(results);
+      }
+    });
+  }
+
+  module.exports = { NewPublishers, contractsChange, stagingUpdateStatus };

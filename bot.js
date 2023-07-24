@@ -7,7 +7,7 @@ const adminCommandList = require('./src/modules/adminCommandList.js')
 const generalCommandList = require('./src/modules/generalCommandList.js')
 const networkStats = require('./src/modules/networkStats.js')
 const nodeStats = require('./src/modules/nodeStats.js')
-const { NewPublishers,contractsChange } = require('./src/modules/eventMonitor.js')
+const { NewPublishers,contractsChange,stagingUpdateStatus } = require('./src/modules/eventMonitor.js')
 
 const {
   Telegraf,
@@ -21,8 +21,6 @@ bot.use(session({ ttl: 10 }))
 
 const chatId = process.env.OTHUB_ID;
 const adminGroup = process.env.ADMIN_GROUP.split(',');
-
-let userAcceptedRules = {};
 
 bot.on('new_chat_members', (ctx) => {
   if (ctx.chat.id == chatId) {
@@ -38,47 +36,35 @@ Before you start, please take a moment to review the rules:\n
 Remember, violation of these rules may result in your removal from the community. By remaining in this community, you agree to abide by these rules.
 
 Useful links:
-1️⃣ [OTHub Official Website](https://othub.io)
-2️⃣ [OTHub GitHub](https://github.com/othub-io)
-3️⃣ [OriginTrail Official Website](https://origintrail.io)
-4️⃣ [DKG Explorer](https://dkg.origintrail.io/)
-5️⃣ [OriginTrail Subscan](https://origintrail.subscan.io/)
-6️⃣ [OriginTrail Docs](https://docs.origintrail.io/)
-7️⃣ [OriginTrail DeepDive](https://deepdive.origintrail.club)
-8️⃣ [TracVerse](https://tracverse.com)
+1️⃣ <a href="https://othub.io">OTHub Official Website</a>
+2️⃣ <a href="https://github.com/othub-io">OTHub GitHub</a>
+3️⃣ <a href="https://origintrail.io">OriginTrail Official Website</a>
+4️⃣ <a href="https://dkg.origintrail.io/">DKG Explorer</a>
+5️⃣ <a href="https://origintrail.subscan.io/">OriginTrail Subscan</a>
+6️⃣ <a href="https://docs.origintrail.io/">OriginTrail Docs</a>
+7️⃣ <a href="https://deepdive.origintrail.club">OriginTrail DeepDive</a>
+8️⃣ <a href="https://tracverse.com">TracVerse</a>
 
-For more interactions with @othubbot, please type: /commands
+For more interactions with @othubbot, please type: /commands`;
 
-If you agree to these rules, please press the 'I Accept the Rules' button.`;
-
-    ctx.reply(welcomeMessage, Markup.inlineKeyboard([
-      Markup.button.callback('I Accept the Rules', 'accept_rules')
-    ])).catch(console.error);
-
-    setTimeout(() => {
-      if (userAcceptedRules[userId] === false) {
-        ctx.telegram.kickChatMember(ctx.chat.id, userId);
-        delete userAcceptedRules[userId];
-      }
-    }, 60000);
-  }
-});
-
-bot.action(/accept_rules:(\d+)/, async (ctx) => {
-  const userId = parseInt(ctx.match[1]);
-
-  if (userId in userAcceptedRules) {
-    userAcceptedRules[userId] = true;
-    const user = await ctx.telegram.getChatMember(ctx.chat.id, userId);
-    const firstName = user.user.first_name;
-    ctx.reply(`Thank you ${firstName} for accepting the rules! You can now participate in the discussion.`).catch(console.error);
+  ctx.replyWithHTML(welcomeMessage).then((messageSent) => {
+  setTimeout(() => {
+      ctx.deleteMessage(messageSent.message_id);
+  }, process.env.DELETE_TIMER);
+  }).catch(console.error);
   }
 });
 
 ////////////////eventMonitor
-
-function notifyTelegramContractsChange(contractsChange) {
+function notifyTelegramContractsChange() {
   const message = `📜DKG V6 Contracts Change Detected!`;
+  adminGroup.forEach(adminId => {
+    bot.telegram.sendMessage(adminId, message);
+  });
+}
+
+function notifyTelegramStagingUpdateStatus() {
+  const message = `🛠Staging Update process stalled!`;
   adminGroup.forEach(adminId => {
     bot.telegram.sendMessage(adminId, message);
   });
@@ -100,6 +86,10 @@ function notifyTelegramNewPublisher(newPublishers) {
 cron.schedule(process.env.DAILY, function() {
   NewPublishers(notifyTelegramNewPublisher);
   contractsChange(notifyTelegramContractsChange);
+});
+
+cron.schedule(process.env.HOURLY, function(){
+  stagingUpdateStatus(notifyTelegramStagingUpdateStatus);
 });
 
 ////////////////networkStats
