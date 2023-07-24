@@ -82,7 +82,6 @@ function notifyTelegramNewPublisher(newPublishers) {
   bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML' });
 }
 
-
 cron.schedule(process.env.DAILY, function() {
   NewPublishers(notifyTelegramNewPublisher);
   contractsChange(notifyTelegramContractsChange);
